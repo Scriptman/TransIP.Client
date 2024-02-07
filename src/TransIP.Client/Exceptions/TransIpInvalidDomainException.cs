@@ -1,4 +1,6 @@
-﻿namespace TransIP.Client.Exceptions
+﻿using System;
+
+namespace TransIP.Client.Exceptions
 {
     public class TransIpInvalidDomainException : Exception
     {

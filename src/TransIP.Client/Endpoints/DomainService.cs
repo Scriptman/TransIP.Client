@@ -1,6 +1,7 @@
-﻿using System.Net;
-using System.Net.Http.Json;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
 using TransIP.Client.DataTransferObjects;
 using TransIP.Client.Enums;
 using TransIP.Client.Models;
@@ -10,7 +11,7 @@ namespace TransIP.Client.Endpoints
     public interface IDomainService
     {
         Task<IEnumerable<Domain>> GetAllDomainsAsync(AdditionalData? addData = null);
-        Task<Domain?> GetDomainAsync(string domainName, AdditionalData? addData = null);
+        Task<Domain> GetDomainAsync(string domainName, AdditionalData? addData = null);
         Task<IEnumerable<Nameserver>> GetNameservers(string domainName);
         Task<bool> SetNameservers(string domainName, IEnumerable<Nameserver> nameservers);
     }
@@ -27,13 +28,13 @@ namespace TransIP.Client.Endpoints
 
         public async Task<IEnumerable<Domain>> GetAllDomainsAsync(AdditionalData? addData = null)
         {
-            Dictionary<string,string> urlQueryParameters = new();
+            Dictionary<string,string> urlQueryParameters = new Dictionary<string, string>();
 
             // Want to show some additional data?
             if (addData != null)
             {
                 var additionalData = _parseAdditionalData((AdditionalData)addData);
-                urlQueryParameters.Add("include", string.Join("&", additionalData));
+                urlQueryParameters.Add("include", string.Join(",", additionalData));
             }
 
             var response = await _baseClient.GetAsync(urlParameters: urlQueryParameters);
@@ -49,18 +50,18 @@ namespace TransIP.Client.Endpoints
             throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
         }
 
-        public async Task<Domain?> GetDomainAsync(string domainName, AdditionalData? addData = null)
+        public async Task<Domain> GetDomainAsync(string domainName, AdditionalData? addData = null)
         {
-            Dictionary<string, string> urlQueryParameters = new();
+            Dictionary<string, string> urlQueryParameters = new Dictionary<string, string>();
 
             // Want to show some additional data?
             if (addData != null)
             {
                 var additionalData = _parseAdditionalData((AdditionalData)addData);
-                urlQueryParameters.Add("include", string.Join("&", additionalData));
+                urlQueryParameters.Add("include", string.Join(",", additionalData));
             }
 
-            var response = await _baseClient.GetAsync(domainName, urlQueryParameters, null);
+            var response = await _baseClient.GetAsync(domainName, urlQueryParameters);
 
             if (response.IsSuccessStatusCode)
             {
@@ -102,7 +103,7 @@ namespace TransIP.Client.Endpoints
 
         private List<string> _parseAdditionalData(AdditionalData additionalData)
         {
-            List<string> additionalDataList = new();
+            List<string> additionalDataList = new List<string>();
 
             if ((additionalData & AdditionalData.Nameservers) == AdditionalData.Nameservers)
             {

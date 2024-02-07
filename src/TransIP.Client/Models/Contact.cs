@@ -1,9 +1,11 @@
-﻿using TransIP.Client.Enums;
+﻿using System.Text.Json.Serialization;
+using TransIP.Client.Enums;
 
 namespace TransIP.Client.Models
 {
     public class Contact
     {
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public ContactType Type { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }

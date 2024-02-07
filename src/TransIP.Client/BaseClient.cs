@@ -2,16 +2,19 @@
 using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
 using System.Text.Json;
-using System.Net.Http.Json;
 using System.Text;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using TransIP.Client.Models;
 using System.Net;
 using TransIP.Client.DataTransferObjects;
-using System.Linq.Expressions;
 using TransIP.Client.Exceptions;
 using TransIP.Client.JsonConverters;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using TransIP.Client.Helpers;
 
 namespace TransIP.Client
 {
@@ -41,7 +44,7 @@ namespace TransIP.Client
 
             try
             {
-                _httpClient = new()
+                _httpClient = new HttpClient()
                 {
                     BaseAddress = new Uri(_url),
                 };
@@ -81,7 +84,7 @@ namespace TransIP.Client
         {
             TimeSpan t = (DateTime.UtcNow - new DateTime(1970, 1, 1));
 
-            Dictionary<string, string> requestBodyParameters = new()
+            Dictionary<string, string> requestBodyParameters = new Dictionary<string, string>()
             {
                 { "login", _username },
                 { "nonce", _createNonce(16) },
@@ -96,7 +99,7 @@ namespace TransIP.Client
             // Do request the accesstoken
             try
             {
-                HttpRequestMessage request = new(HttpMethod.Post, "auth");
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "auth");
 
                 request.Headers.Add("Signature", signature);
 
@@ -106,11 +109,12 @@ namespace TransIP.Client
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var token = await response.Content.ReadFromJsonAsync<Authentication>(JsonOptions);
+                    var jsonResult = await response.Content.ReadAsStreamAsync();
+                    var auth = await JsonSerializer.DeserializeAsync<TokenDto>(jsonResult, JsonOptions);
 
-                    if (token != null && token.Token != null)
+                    if (auth != null && auth.Token != null)
                     {
-                        _accessToken = token.Token;
+                        _accessToken = auth.Token;
                     }
                     else
                     {
@@ -121,7 +125,8 @@ namespace TransIP.Client
                 {
                     try
                     {
-                        var errorDto = await response.Content.ReadFromJsonAsync<ErrorDto>();
+                        var jsonResult = await response.Content.ReadAsStreamAsync();
+                        var errorDto = await JsonSerializer.DeserializeAsync<ErrorDto>(jsonResult, JsonOptions);
                         throw new Exception(errorDto?.Error ?? "Some error occured while requesting the access token, HTTP StatusCode: " + response.StatusCode);
                     }
                     catch
@@ -150,6 +155,8 @@ namespace TransIP.Client
 
         private string _createSignature (string strToEncrypt)
         {
+            //return EncryptionHelper.Encode(EncryptionHelper.Sign(_privateKey,strToEncrypt));
+
             byte[] inputBytes = Encoding.UTF8.GetBytes(strToEncrypt);
             byte[] inputHash = SHA512.Create().ComputeHash(inputBytes);
 
@@ -167,124 +174,105 @@ namespace TransIP.Client
             }
         }
         
-        public async Task<T?> PostAsync<T> (string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> PostAsync(string additionalUrl, object data)
         {
-            await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
+            var request = await _createRequest(HttpMethod.Post, additionalUrl);
+            request.Content = _transformDtoToJson(data);
 
-            var response = await _sendAsync(HttpMethod.Post, urlAddition, data, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string responseStr = await response.Content.ReadAsStringAsync();
-
-                // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
-            }
-            else
-            {
-                throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
-            }
+            return await _sendRequest(request);
         }
 
-        public async Task<HttpResponseMessage> PutAsync(string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> PutAsync(string additionalUrl, object data)
         {
-            await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
+            var request = await _createRequest(HttpMethod.Put, additionalUrl);
+            request.Content = _transformDtoToJson(data);
 
-            return await _sendAsync(HttpMethod.Put, urlAddition, data, cancellationToken);
+            return await _sendRequest(request);
         }
 
-        public async Task<T?> PatchAsync<T>(string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> PatchAsync(string additionalUrl, object data)
         {
-            await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
+            var request = await _createRequest(new HttpMethod("PATCH"), additionalUrl);
+            request.Content = _transformDtoToJson(data);
 
-            var response = await _sendAsync(HttpMethod.Patch, urlAddition, data, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string responseStr = await response.Content.ReadAsStringAsync();
-
-                // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
-            }
-            else
-            {
-                throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
-            }
+            return await _sendRequest(request);
         }
 
-        public async Task<T?> DeleteAsync<T>(string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> DeleteAsync(string additionalUrl)
         {
-            await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
+            var request = await _createRequest(HttpMethod.Delete, additionalUrl);
+            //request.Content = _transformDtoToJson(data);
 
-            var response = await _sendAsync(HttpMethod.Delete, urlAddition, data, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string responseStr = await response.Content.ReadAsStringAsync();
-
-                // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
-            }
-            else
-            {
-                throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
-            }
+            return await _sendRequest(request);
         }
 
-        public async Task<HttpResponseMessage> GetAsync(string additionalUrl = "", Dictionary<string,string>? urlParameters = null, object? data = null, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> GetAsync(string additionalUrl = "", Dictionary<string,string>? urlParameters = null)
+        {
+            var request = await _createRequest(HttpMethod.Get, additionalUrl, urlParameters);
+            //request.Content = _transformDtoToJson(request);
+
+            return await _sendRequest(request);
+        }
+
+        private async Task<HttpResponseMessage> _sendRequest(HttpRequestMessage request)
+        {
+            var result = await _httpClient.SendAsync(request);
+
+            if (!result.IsSuccessStatusCode)
+            {
+                return await _handleRequestFailure(result); // Can return content of 401 + using mode ReadOnly
+            }
+
+            return result;
+        }
+
+        private async Task<HttpRequestMessage> _createRequest(HttpMethod method, string relativeUrl, Dictionary<string, string>? queryParameters = null)
         {
             await _authenticateAsync(); // Do we need to create or refresh the accesstoken?
 
+            // Correct urlAddition with starting slash
+            if (!relativeUrl.StartsWith("/"))
+            {
+                relativeUrl = "/" + relativeUrl;
+            }
+
             string parsedUrlParameters = string.Empty;
 
-            if (urlParameters != null && urlParameters.Any())
+            if (queryParameters != null && queryParameters.Any())
             {
-                var strKeyValuePairs = urlParameters.Select(x => String.Format("{0}={1}", x.Key, x.Value));
+                var strKeyValuePairs = queryParameters.Select(x => String.Format("{0}={1}", x.Key, x.Value));
                 var strUrlParameters = string.Join("&", strKeyValuePairs);
                 parsedUrlParameters = "?" + strUrlParameters;
             }
 
-            return await _sendAsync(HttpMethod.Get, additionalUrl + parsedUrlParameters, data, cancellationToken);
-        }
-
-        private async Task<HttpResponseMessage> _sendAsync (HttpMethod method, string urlAddition, object? data, CancellationToken? cancellationToken = null)
-        {
-            // Correct urlAddition with starting slash
-            if (!urlAddition.StartsWith("/"))
-            {
-                urlAddition = "/" + urlAddition;
-            }
-             
-            HttpRequestMessage request = new (method, _endpointUrl + urlAddition);
+            HttpRequestMessage request = new HttpRequestMessage(method, _endpointUrl + relativeUrl + parsedUrlParameters);
 
             request.Method = method;
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
+            if (!string.IsNullOrWhiteSpace(_accessToken))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+            }
+
+            return request;
+        }
+
+        private StringContent _transformDtoToJson ( object dtoObject )
+        {
             var jsonSendOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = new LowerCaseNamingPolicy()
             };
 
-            request.Content = new StringContent(JsonSerializer.Serialize(data, jsonSendOptions), Encoding.UTF8, "application/json");
+            return new StringContent(JsonSerializer.Serialize(dtoObject, jsonSendOptions), Encoding.UTF8, "application/json");
+        }
 
-            HttpResponseMessage response = new(); 
-
-            if (cancellationToken != null)
-            {
-                response =  await _httpClient.SendAsync(request, (CancellationToken)cancellationToken);
-            }
-
-            response = await _httpClient.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return response;
-            }
-
-            // Throw exception, let the user handle this.
+        private async Task<HttpResponseMessage> _handleRequestFailure(HttpResponseMessage response)
+        {
             try
             {
-                var errorDto = await response.Content.ReadFromJsonAsync<ErrorDto>();
+                var resultJson = await response.Content.ReadAsStreamAsync();
+                var errorDto = await JsonSerializer.DeserializeAsync<ErrorDto>(resultJson);
 
                 switch (response.StatusCode)
                 {
@@ -306,6 +294,10 @@ namespace TransIP.Client
             catch
             {
                 throw;
+            }
+            finally
+            {
+                response.Dispose();
             }
         }
     }

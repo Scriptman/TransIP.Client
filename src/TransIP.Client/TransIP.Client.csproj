@@ -1,9 +1,38 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	<ImplicitUsings>disable</ImplicitUsings>
+    <PackageId>transip-client</PackageId>
+    <Title>TransIP.Client</Title>
+    <Version>0.0.1-beta</Version>
+    <Authors>M.Lamers</Authors>
+    <Company>Busign I.S.</Company>
+    <PackageProjectUrl>https://github.com/Scriptman/TransIP.Client</PackageProjectUrl>
+    <Copyright>https://github.com/Scriptman/TransIP.Client/blob/main/LICENSE</Copyright>
+    <Description>A client library for consuming the TransIP Rest API</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Scriptman/TransIP.Client.git</RepositoryUrl>
+    <PackageTags>TransIP, API, DNS, domains</PackageTags>
+    <PackageReleaseNotes>Retrieve list of owned domains
+Retrieve domain information
+Get nameservers for domain
+Set nameservers for domain</PackageReleaseNotes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.1" />
+  </ItemGroup>
 
 </Project>

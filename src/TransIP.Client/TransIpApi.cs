@@ -14,21 +14,6 @@ namespace TransIP.Client
             _client = new BaseClient (_url, username, privateKey, clientMode, onlyWhiteListedIps, labelPrefix);
         }
 
-        public void OverrideURL(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentNullException(nameof(url), "Please provide an URL for the TransIP api.");
-            }
-
-            if (!url.EndsWith("/"))
-            {
-                url += "/";
-            }
-
-            _url = url;
-        }
-
         public IDomainService domainService() => new DomainService(_client);
     }
 }
