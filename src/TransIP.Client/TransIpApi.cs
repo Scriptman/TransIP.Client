@@ -14,8 +14,6 @@ namespace TransIP.Client
             _client = new BaseClient (_url, username, privateKey, clientMode, onlyWhiteListedIps, labelPrefix);
         }
 
-
-
         public void OverrideURL(string url)
         {
             if (string.IsNullOrWhiteSpace(url))
@@ -31,9 +29,6 @@ namespace TransIP.Client
             _url = url;
         }
 
-        public IDomainService domainService()
-        {
-            return new DomainService (_client);
-        }
+        public IDomainService domainService() => new DomainService(_client);
     }
 }

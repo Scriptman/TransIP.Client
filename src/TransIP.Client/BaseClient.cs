@@ -6,10 +6,12 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Text.Json.Nodes;
-using System;
 using TransIP.Client.Models;
+using System.Net;
+using TransIP.Client.DataTransferObjects;
+using System.Linq.Expressions;
+using TransIP.Client.Exceptions;
+using TransIP.Client.JsonConverters;
 
 namespace TransIP.Client
 {
@@ -26,7 +28,7 @@ namespace TransIP.Client
         private string _accessToken = string.Empty;
         private string _endpointUrl = "";
 
-        private readonly JsonSerializerOptions _jsonOptions;
+        public JsonSerializerOptions JsonOptions;
 
         public BaseClient(string url, string username, string privateKey, ClientMode clientMode, bool onlyWhiteListedIps, string labelPrefix)
         {
@@ -49,7 +51,7 @@ namespace TransIP.Client
                 throw; // Let the user handle the exception.
             }
 
-            _jsonOptions = new JsonSerializerOptions
+            JsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 ReferenceHandler = ReferenceHandler.Preserve
@@ -104,7 +106,7 @@ namespace TransIP.Client
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var token = await response.Content.ReadFromJsonAsync<Authentication>(_jsonOptions);
+                    var token = await response.Content.ReadFromJsonAsync<Authentication>(JsonOptions);
 
                     if (token != null && token.Token != null)
                     {
@@ -117,7 +119,15 @@ namespace TransIP.Client
                 }
                 else
                 {
-                    throw new Exception($"Did not receive the accesstoken, received HTTP Status code: {response.StatusCode}");
+                    try
+                    {
+                        var errorDto = await response.Content.ReadFromJsonAsync<ErrorDto>();
+                        throw new Exception(errorDto?.Error ?? "Some error occured while requesting the access token, HTTP StatusCode: " + response.StatusCode);
+                    }
+                    catch
+                    {
+                        throw;
+                    }
                 }
             }
             catch
@@ -168,7 +178,7 @@ namespace TransIP.Client
                 string responseStr = await response.Content.ReadAsStringAsync();
 
                 // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, _jsonOptions);
+                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
             }
             else
             {
@@ -176,23 +186,11 @@ namespace TransIP.Client
             }
         }
 
-        public async Task<T?> PutAsync<T>(string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> PutAsync(string urlAddition, object? data, CancellationToken? cancellationToken = null)
         {
             await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
 
-            var response = await _sendAsync(HttpMethod.Put, urlAddition, data, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string responseStr = await response.Content.ReadAsStringAsync();
-
-                // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, _jsonOptions);
-            }
-            else
-            {
-                throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
-            }
+            return await _sendAsync(HttpMethod.Put, urlAddition, data, cancellationToken);
         }
 
         public async Task<T?> PatchAsync<T>(string urlAddition, object? data, CancellationToken? cancellationToken = null)
@@ -206,7 +204,7 @@ namespace TransIP.Client
                 string responseStr = await response.Content.ReadAsStringAsync();
 
                 // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, _jsonOptions);
+                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
             }
             else
             {
@@ -225,7 +223,7 @@ namespace TransIP.Client
                 string responseStr = await response.Content.ReadAsStringAsync();
 
                 // Convert.
-                return JsonSerializer.Deserialize<T>(responseStr, _jsonOptions);
+                return JsonSerializer.Deserialize<T>(responseStr, JsonOptions);
             }
             else
             {
@@ -233,39 +231,82 @@ namespace TransIP.Client
             }
         }
 
-        public async Task<T?> GetAsync<T>(string urlAddition, object? data, CancellationToken? cancellationToken = null)
+        public async Task<HttpResponseMessage> GetAsync(string additionalUrl = "", Dictionary<string,string>? urlParameters = null, object? data = null, CancellationToken? cancellationToken = null)
         {
-            await _authenticateAsync(); // Do we neet to create or refresh the accesstoken?
+            await _authenticateAsync(); // Do we need to create or refresh the accesstoken?
 
-            var response = await _sendAsync(HttpMethod.Get, urlAddition, data, cancellationToken);
+            string parsedUrlParameters = string.Empty;
 
-            if (response.IsSuccessStatusCode)
+            if (urlParameters != null && urlParameters.Any())
             {
-                string jsonResult = await response.Content.ReadAsStringAsync();
+                var strKeyValuePairs = urlParameters.Select(x => String.Format("{0}={1}", x.Key, x.Value));
+                var strUrlParameters = string.Join("&", strKeyValuePairs);
+                parsedUrlParameters = "?" + strUrlParameters;
+            }
 
-                return JsonSerializer.Deserialize<T>(jsonResult, _jsonOptions);
-            }
-            else
-            {
-                throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
-            }
+            return await _sendAsync(HttpMethod.Get, additionalUrl + parsedUrlParameters, data, cancellationToken);
         }
 
         private async Task<HttpResponseMessage> _sendAsync (HttpMethod method, string urlAddition, object? data, CancellationToken? cancellationToken = null)
         {
+            // Correct urlAddition with starting slash
+            if (!urlAddition.StartsWith("/"))
+            {
+                urlAddition = "/" + urlAddition;
+            }
+             
             HttpRequestMessage request = new (method, _endpointUrl + urlAddition);
 
             request.Method = method;
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-            
-            request.Content = new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"); ;
+
+            var jsonSendOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = new LowerCaseNamingPolicy()
+            };
+
+            request.Content = new StringContent(JsonSerializer.Serialize(data, jsonSendOptions), Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = new(); 
 
             if (cancellationToken != null)
             {
-                return await _httpClient.SendAsync(request, (CancellationToken)cancellationToken);
+                response =  await _httpClient.SendAsync(request, (CancellationToken)cancellationToken);
             }
 
-            return await _httpClient.SendAsync(request);
+            response = await _httpClient.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return response;
+            }
+
+            // Throw exception, let the user handle this.
+            try
+            {
+                var errorDto = await response.Content.ReadFromJsonAsync<ErrorDto>();
+
+                switch (response.StatusCode)
+                {
+                    case HttpStatusCode.NotFound:
+                        throw new TransIpNotFoundException(errorDto?.Error ?? "No error message received from TransIP, but the HTTP StatusCode was 404 - Not found");
+                    case HttpStatusCode.NotAcceptable:
+                        throw new TransIpInvalidDomainException(errorDto?.Error ?? "No error message received from TransIP, but the HTTP StatusCode was 406 - Not Acceptable");
+                    case HttpStatusCode.Forbidden:
+                        if (_mode == ClientMode.ReadOnly)
+                        {
+                            return response;
+                        }
+
+                        throw new Exception(errorDto?.Error ?? $"No error message received from TransIP, but the HTTP StatusCode was {response.StatusCode}");
+                    default:
+                        throw new Exception(errorDto?.Error ?? $"No error message received from TransIP, but the HTTP StatusCode was {response.StatusCode}");
+                }
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
