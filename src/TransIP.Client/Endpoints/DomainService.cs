@@ -10,20 +10,34 @@ namespace TransIP.Client.Endpoints
 {
     public interface IDomainService
     {
+        void SetDomain(string domain);
         Task<IEnumerable<Domain>> GetAllDomainsAsync(AdditionalData? addData = null);
-        Task<Domain> GetDomainAsync(string domainName, AdditionalData? addData = null);
-        Task<IEnumerable<Nameserver>> GetNameservers(string domainName);
-        Task<bool> SetNameservers(string domainName, IEnumerable<Nameserver> nameservers);
+        Task<Domain> GetDomainAsync(AdditionalData? addData = null);
+        Task<IEnumerable<Nameserver>> GetNameserversAsync();
+        Task<bool> SetNameserversAsync(IEnumerable<Nameserver> nameservers);
+        Task<List<DnsEntry>> GetDnsEntriesAsync();
+        Task<bool> AddDnsEntryAsync(DnsEntry dnsEntry);
+        Task<bool> UpdateDnsEntryAsync(DnsEntry dnsEntry);
+        Task<bool> DeleteDnsEntryAsync(DnsEntry dnsEntry);
     }
     public class DomainService : IDomainService, IEndpoint
     {
         private readonly BaseClient _baseClient;
-        protected string endpoint = "domains";
+        protected string _endpoint = "domains";
 
-        public DomainService(BaseClient client)
+        private string _domainName = "";
+
+        public DomainService(BaseClient client, string domainName = "")
         {
             _baseClient = client;
-            _baseClient.SetEndpoint(endpoint);
+            _baseClient.SetEndpoint(_endpoint);
+
+            _domainName = domainName;
+        }
+
+        public void SetDomain (string domainName)
+        {
+            _domainName = domainName;
         }
 
         public async Task<IEnumerable<Domain>> GetAllDomainsAsync(AdditionalData? addData = null)
@@ -47,10 +61,10 @@ namespace TransIP.Client.Endpoints
                 return domainsDto?.Domains ?? new List<Domain>();
             }
             
-            throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+            throw new Exception($"DomainService.GetAllDomainsAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
         }
 
-        public async Task<Domain> GetDomainAsync(string domainName, AdditionalData? addData = null)
+        public async Task<Domain> GetDomainAsync(AdditionalData? addData = null)
         {
             Dictionary<string, string> urlQueryParameters = new Dictionary<string, string>();
 
@@ -61,22 +75,22 @@ namespace TransIP.Client.Endpoints
                 urlQueryParameters.Add("include", string.Join(",", additionalData));
             }
 
-            var response = await _baseClient.GetAsync(domainName, urlQueryParameters);
+            var response = await _baseClient.GetAsync(_domainName, urlQueryParameters);
 
             if (response.IsSuccessStatusCode)
             {
                 string jsonResult = await response.Content.ReadAsStringAsync();
 
                 var domainDto = JsonSerializer.Deserialize<DomainDto>(jsonResult, _baseClient.JsonOptions);
-                return domainDto?.Domain;
+                return domainDto!.Domain;
             }
            
-            throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+            throw new Exception($"DomainService.GetDomainAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
         }
 
-        public async Task<IEnumerable<Nameserver>> GetNameservers(string domainName)
+        public async Task<IEnumerable<Nameserver>> GetNameserversAsync()
         {
-            var response = await _baseClient.GetAsync(domainName + "/nameservers");
+            var response = await _baseClient.GetAsync(_domainName + "/nameservers");
 
             if (response.IsSuccessStatusCode)
             {
@@ -86,12 +100,12 @@ namespace TransIP.Client.Endpoints
                 return nameserversDto?.Nameservers ?? new List<Nameserver>();
             }
             
-            throw new Exception($"Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+            throw new Exception($"DomainService.GetNameserversAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
         }
 
-        public async Task<bool> SetNameservers(string domainName, IEnumerable<Nameserver> nameservers)
+        public async Task<bool> SetNameserversAsync(IEnumerable<Nameserver> nameservers)
         {
-            var response = await _baseClient.PutAsync(domainName + "/nameservers", new NameserversDto { Nameservers = nameservers });
+            var response = await _baseClient.PutAsync(_domainName + "/nameservers", new NameserversDto { Nameservers = nameservers });
 
             if (response.IsSuccessStatusCode) // 204 Success, no content.
             {
@@ -99,6 +113,69 @@ namespace TransIP.Client.Endpoints
             }
 
             return false; // All other status codes.
+        }
+
+        public async Task<List<DnsEntry>> GetDnsEntriesAsync()
+        {
+            var response = await _baseClient.GetAsync(_domainName + "/dns");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string jsonResult = await response.Content.ReadAsStringAsync();
+
+                var dnsEntriesDto = JsonSerializer.Deserialize<DnsEntriesDto>(jsonResult, _baseClient.JsonOptions);
+                return dnsEntriesDto?.DnsEntries ?? new List<DnsEntry>();
+            }
+
+            throw new Exception($"DomainService.GetDnsEntriesAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+        }
+
+        public async Task<bool> AddDnsEntryAsync(DnsEntry dnsEntry)
+        {
+            var response = await _baseClient.PostAsync(_domainName + "/dns", dnsEntry);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            throw new Exception($"DomainService.AddDnsEntryAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+        }
+
+        public async Task<bool> UpdateDnsEntryAsync(DnsEntry dnsEntry)
+        {
+            var response = await _baseClient.PatchAsync(_domainName + "/dns", dnsEntry);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            throw new Exception($"DomainService.UpdateDnsEntryAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+        }
+
+        public async Task<bool> ReplaceAllDnsEntriesAsync(IEnumerable<DnsEntry> dnsEntries)
+        {
+            var response = await _baseClient.PutAsync(_domainName + "/dns", dnsEntries);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            throw new Exception($"DomainService.ReplaceAllDnsEntriesAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
+        }
+
+        public async Task<bool> DeleteDnsEntryAsync(DnsEntry dnsEntry)
+        {
+            var response = await _baseClient.PatchAsync(_domainName + "/dns", dnsEntry);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            throw new Exception($"DomainService.DeleteDnsEntryAsync failed for domain {_domainName}. Received status code {response.StatusCode}, please refer to the TransIP API Documentation about this statuscode.");
         }
 
         private List<string> _parseAdditionalData(AdditionalData additionalData)

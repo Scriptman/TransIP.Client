@@ -14,6 +14,6 @@ namespace TransIP.Client
             _client = new BaseClient (_url, username, privateKey, clientMode, onlyWhiteListedIps, labelPrefix);
         }
 
-        public IDomainService domainService() => new DomainService(_client);
+        public IDomainService domainService(string domainName = "") => new DomainService(_client, domainName);
     }
 }
