@@ -6,7 +6,10 @@
 [![license](https://img.shields.io/github/license/Scriptman/TransIP.Client.svg)](https://github.com/Scriptman/TransIP.Client/blob/main/LICENSE)
 [![NuGet](https://img.shields.io/nuget/v/TransIP.Client.svg)](https://www.nuget.org/packages/TransIP.Client/)
 
-Do lik e that i take te effort to make a public client API in C# for the TransIP Rest API?
+Do you like that i take the effort to make a public client API in C# for the TransIP Rest API?
+
+Buy me a coffee or contribute to this project.
+
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/scriptman)
 
 > [!WARNING]  
