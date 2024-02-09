@@ -15,9 +15,10 @@ namespace TransIP.Client.Endpoints
         Task<Domain> GetDomainAsync(AdditionalData? addData = null);
         Task<IEnumerable<Nameserver>> GetNameserversAsync();
         Task<bool> SetNameserversAsync(IEnumerable<Nameserver> nameservers);
-        Task<List<DnsEntry>> GetDnsEntriesAsync();
+        Task<IEnumerable<DnsEntry>> GetDnsEntriesAsync();
         Task<bool> AddDnsEntryAsync(DnsEntry dnsEntry);
         Task<bool> UpdateDnsEntryAsync(DnsEntry dnsEntry);
+        Task<bool> ReplaceAllDnsEntriesAsync(IEnumerable<DnsEntry> dnsEntries);
         Task<bool> DeleteDnsEntryAsync(DnsEntry dnsEntry);
     }
     public class DomainService : IDomainService, IEndpoint
@@ -115,7 +116,7 @@ namespace TransIP.Client.Endpoints
             return false; // All other status codes.
         }
 
-        public async Task<List<DnsEntry>> GetDnsEntriesAsync()
+        public async Task<IEnumerable<DnsEntry>> GetDnsEntriesAsync()
         {
             var response = await _baseClient.GetAsync(_domainName + "/dns");
 
@@ -156,7 +157,7 @@ namespace TransIP.Client.Endpoints
 
         public async Task<bool> ReplaceAllDnsEntriesAsync(IEnumerable<DnsEntry> dnsEntries)
         {
-            var response = await _baseClient.PutAsync(_domainName + "/dns", dnsEntries);
+            var response = await _baseClient.PutAsync(_domainName + "/dns", new DnsEntriesDto { DnsEntries = dnsEntries });
 
             if (response.IsSuccessStatusCode)
             {

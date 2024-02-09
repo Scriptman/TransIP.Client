@@ -5,6 +5,6 @@ namespace TransIP.Client.DataTransferObjects
 {
     public class DnsEntriesDto
     {
-        public List<DnsEntry> DnsEntries { get; set; }
+        public IEnumerable<DnsEntry> DnsEntries { get; set; }
     }
 }
