@@ -1,10 +1,13 @@
 # TransIP.Client
 > TransIP API v6 client for C#
 
-[![.NET 6.0 LTS](https://img.shields.io/badge/-.NET%206.0-blueviolet)](https://learn.microsoft.com/en-us/dotnet/api/?view=net-6.0)
+[![.NET Standard 2.1](https://img.shields.io/badge/.NET%20Standard-2.1-purple)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![GitHub issues](https://img.shields.io/github/issues/Scriptman/TransIP.Client.svg)](https://github.com/Scriptman/TransIP.Client/issues)
 [![license](https://img.shields.io/github/license/Scriptman/TransIP.Client.svg)](https://github.com/Scriptman/TransIP.Client/blob/main/LICENSE)
 [![NuGet](https://img.shields.io/nuget/v/TransIP.Client.svg)](https://www.nuget.org/packages/TransIP.Client/)
+
+Do lik e that i take te effort to make a public client API in C# for the TransIP Rest API?
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/scriptman)
 
 > [!WARNING]  
 > This repository is still in development. I am not responsible for any errors in this code. Use at your own risk.
