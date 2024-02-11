@@ -7,12 +7,13 @@
 	<ImplicitUsings>disable</ImplicitUsings>
     <PackageId>transip-client</PackageId>
     <Title>TransIP.Client</Title>
-    <Version>0.0.1-beta</Version>
+    <Version>0.1.0-alpha</Version>
     <Authors>M.Lamers</Authors>
     <Company>Busign I.S.</Company>
     <PackageProjectUrl>https://github.com/Scriptman/TransIP.Client</PackageProjectUrl>
     <Copyright>https://github.com/Scriptman/TransIP.Client/blob/main/LICENSE</Copyright>
     <Description>A client library for consuming the TransIP Rest API</Description>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Scriptman/TransIP.Client.git</RepositoryUrl>
