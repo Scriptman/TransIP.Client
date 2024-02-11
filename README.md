@@ -4,7 +4,7 @@
 [![.NET Standard 2.1](https://img.shields.io/badge/.NET%20Standard-2.1-purple)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![GitHub issues](https://img.shields.io/github/issues/Scriptman/TransIP.Client.svg)](https://github.com/Scriptman/TransIP.Client/issues)
 [![license](https://img.shields.io/github/license/Scriptman/TransIP.Client.svg)](https://github.com/Scriptman/TransIP.Client/blob/main/LICENSE)
-[![NuGet](https://img.shields.io/nuget/v/TransIP.Client.svg)](https://www.nuget.org/packages/TransIP.Client/)
+[![NuGet](https://img.shields.io/nuget/v/TransIP-Client.svg)](https://www.nuget.org/packages/TransIP-Client/)
 
 Do you like that i take the effort to make a public client API in C# for the TransIP Rest API?
 
