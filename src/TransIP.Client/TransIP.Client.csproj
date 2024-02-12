@@ -7,7 +7,7 @@
 	<ImplicitUsings>disable</ImplicitUsings>
     <PackageId>transip-client</PackageId>
     <Title>TransIP.Client</Title>
-    <Version>0.1.0-alpha</Version>
+    <Version>0.1.1-alpha</Version>
     <Authors>M.Lamers</Authors>
     <Company>Busign I.S.</Company>
     <PackageProjectUrl>https://github.com/Scriptman/TransIP.Client</PackageProjectUrl>

@@ -272,14 +272,14 @@ namespace TransIP.Client
             try
             {
                 var resultJson = await response.Content.ReadAsStreamAsync();
-                var errorDto = await JsonSerializer.DeserializeAsync<ErrorDto>(resultJson);
+                var errorDto = await JsonSerializer.DeserializeAsync<ErrorDto>(resultJson, JsonOptions);
 
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.NotFound:
                         throw new TransIpNotFoundException(errorDto?.Error ?? "No error message received from TransIP, but the HTTP StatusCode was 404 - Not found");
                     case HttpStatusCode.NotAcceptable:
-                        throw new TransIpInvalidDomainException(errorDto?.Error ?? "No error message received from TransIP, but the HTTP StatusCode was 406 - Not Acceptable");
+                        throw new TransIpNotAcceptableException(errorDto?.Error ?? "No error message received from TransIP, but the HTTP StatusCode was 406 - Not Acceptable");
                     case HttpStatusCode.Forbidden:
                         if (_mode == ClientMode.ReadOnly)
                         {
